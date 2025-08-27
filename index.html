@@ -130,7 +130,7 @@
             font-weight: 500;
         }
         
-        input[type="number"] {
+        input[type="number"], input[type="text"] {
             width: 100%;
             padding: 10px;
             border: none;
@@ -195,7 +195,7 @@
             flex-direction: column;
         }
         
-        #waveCanvas {
+        .waveCanvas {
             background: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
             width: 100%;
@@ -235,6 +235,30 @@
             background: #5a6268;
         }
         
+        .student-list {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .student-item {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .student-item:last-child {
+            border-bottom: none;
+        }
+        
+        .connected-student {
+            color: #aaffaa;
+        }
+        
         @media (max-width: 768px) {
             .simulator-container {
                 flex-direction: column;
@@ -262,13 +286,13 @@
             <div class="role-card teacher" id="teacherRole">
                 <div class="role-icon">👨‍🏫</div>
                 <h2>Teacher</h2>
-                <p>Set wave parameters and create a session for students to join</p>
+                <p>Set wave parameters and see which students match them</p>
             </div>
             
             <div class="role-card student" id="studentRole">
                 <div class="role-icon">👨‍🎓</div>
                 <h2>Student</h2>
-                <p>Join a session and try to match the teacher's wave parameters</p>
+                <p>Enter your name and try to match the teacher's wave parameters</p>
             </div>
         </div>
         
@@ -293,12 +317,17 @@
                     Waiting for parameters...
                 </div>
                 
+                <h3>Connected Students:</h3>
+                <div class="student-list" id="teacherStudentList">
+                    <div class="student-item">No students connected yet</div>
+                </div>
+                
                 <button class="back-btn" id="backFromTeacher">Back to Role Selection</button>
             </div>
             
             <div class="canvas-container">
                 <h2>Wave Simulation</h2>
-                <canvas id="teacherWaveCanvas" width="800" height="300"></canvas>
+                <canvas id="teacherWaveCanvas" class="waveCanvas"></canvas>
                 
                 <div class="wave-info">
                     <div class="info-item">
@@ -318,8 +347,8 @@
             <div class="panel student-panel">
                 <h2><i>👨‍🎓</i> Student Section</h2>
                 <div class="input-group">
-                    <label for="sessionCode">Session Code</label>
-                    <input type="text" id="sessionCode" placeholder="Enter session code">
+                    <label for="studentName">Your Name</label>
+                    <input type="text" id="studentName" placeholder="Enter your name">
                 </div>
                 <div class="input-group">
                     <label for="studentWavelength">Wavelength (m)</label>
@@ -348,7 +377,7 @@
             
             <div class="canvas-container">
                 <h2>Wave Simulation</h2>
-                <canvas id="studentWaveCanvas" width="800" height="300"></canvas>
+                <canvas id="studentWaveCanvas" class="waveCanvas"></canvas>
                 
                 <div class="wave-info">
                     <div class="info-item">
@@ -387,8 +416,10 @@
             const displayVelocity = document.getElementById('displayVelocity');
             const teacherCanvas = document.getElementById('teacherWaveCanvas');
             const teacherCtx = teacherCanvas.getContext('2d');
+            const teacherStudentList = document.getElementById('teacherStudentList');
             
             // Student elements
+            const studentName = document.getElementById('studentName');
             const studentWavelength = document.getElementById('studentWavelength');
             const studentFrequency = document.getElementById('studentFrequency');
             const studentVelocity = document.getElementById('studentVelocity');
@@ -400,7 +431,6 @@
             const studentDisplayVelocity = document.getElementById('studentDisplayVelocity');
             const studentCanvas = document.getElementById('studentWaveCanvas');
             const studentCtx = studentCanvas.getContext('2d');
-            const sessionCode = document.getElementById('sessionCode');
             
             // Wave parameters
             let teacherWaveParams = {
@@ -420,12 +450,16 @@
             let teacherAnimationId;
             let studentAnimationId;
             
+            // Store connected students
+            let connectedStudents = [];
+            
             // Event listeners for role selection
             teacherRole.addEventListener('click', function() {
                 roleSelection.style.display = 'none';
                 teacherScreen.style.display = 'flex';
                 resizeCanvas(teacherCanvas);
                 animateTeacherWave();
+                updateStudentList();
             });
             
             studentRole.addEventListener('click', function() {
@@ -433,7 +467,6 @@
                 studentScreen.style.display = 'flex';
                 resizeCanvas(studentCanvas);
                 animateStudentWave();
-                generateSessionCode();
             });
             
             backFromTeacher.addEventListener('click', function() {
@@ -462,11 +495,6 @@
                 canvas.height = canvas.offsetHeight;
             }
             
-            function generateSessionCode() {
-                const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-                sessionCode.value = code;
-            }
-            
             function setTeacherWaveParams() {
                 teacherWaveParams.wavelength = parseFloat(teacherWavelength.value);
                 teacherWaveParams.frequency = parseFloat(teacherFrequency.value);
@@ -476,8 +504,12 @@
                 displayFrequency.textContent = teacherWaveParams.frequency;
                 displayVelocity.textContent = teacherWaveParams.velocity;
                 
-                teacherStatus.textContent = "Parameters set! Session: " + sessionCode.value;
+                teacherStatus.textContent = "Parameters set!";
                 teacherStatus.className = "status connected";
+                
+                // Clear connected students when teacher changes parameters
+                connectedStudents = [];
+                updateStudentList();
             }
             
             function updateStudentWaveParams() {
@@ -491,6 +523,12 @@
             }
             
             function checkMatchParams() {
+                if (!studentName.value.trim()) {
+                    matchStatus.textContent = "Please enter your name first";
+                    matchStatus.className = "status disconnected";
+                    return;
+                }
+                
                 // Check if values match (with a small tolerance for floating point numbers)
                 const isMatch = 
                     Math.abs(studentWaveParams.wavelength - teacherWaveParams.wavelength) < 0.01 &&
@@ -502,12 +540,35 @@
                     matchStatus.className = "status connected";
                     studentStatus.textContent = "Match Connected!";
                     studentStatus.className = "status connected";
+                    
+                    // Add student to connected list if not already there
+                    const student = studentName.value.trim();
+                    if (!connectedStudents.includes(student)) {
+                        connectedStudents.push(student);
+                        updateStudentList();
+                    }
                 } else {
                     matchStatus.textContent = "Match Status: Values don't match!";
                     matchStatus.className = "status disconnected";
                     studentStatus.textContent = "No connection";
                     studentStatus.className = "status disconnected";
                 }
+            }
+            
+            function updateStudentList() {
+                teacherStudentList.innerHTML = '';
+                
+                if (connectedStudents.length === 0) {
+                    teacherStudentList.innerHTML = '<div class="student-item">No students connected yet</div>';
+                    return;
+                }
+                
+                connectedStudents.forEach(student => {
+                    const studentElement = document.createElement('div');
+                    studentElement.className = 'student-item connected-student';
+                    studentElement.textContent = student;
+                    teacherStudentList.appendChild(studentElement);
+                });
             }
             
             function animateTeacherWave() {
