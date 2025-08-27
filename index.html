@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Wave Matching Simulation (No Session Code)</title>
+    <title>Wave Matching Simulation (Fixed)</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
         body { background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
@@ -42,6 +42,8 @@
         @media (max-width:768px){ .wave-controls { grid-template-columns:1fr; } .buttons{ flex-direction:column; } }
         /* small notification */
         #notification { position:fixed; top:18px; right:18px; padding:10px 14px; border-radius:6px; color:white; z-index:1000; opacity:0; transition:opacity .25s; }
+        .match-indicator { height: 6px; background: #e0e0e0; border-radius: 3px; margin: 10px 0; overflow: hidden; }
+        .match-progress { height: 100%; background: #2ecc71; width: 0%; transition: width 0.5s; }
     </style>
 </head>
 <body>
@@ -138,6 +140,10 @@
                         <input type="number" id="student-wavelength" step="0.1" min="0.5" max="2.0" placeholder="1.0">
                     </div>
 
+                    <div class="match-indicator">
+                        <div class="match-progress" id="match-progress"></div>
+                    </div>
+
                     <button class="submit-btn" id="submit-values">Check & Connect</button>
                 </div>
 
@@ -184,6 +190,7 @@
         const studentWavelength = document.getElementById('student-wavelength');
         const submitBtn = document.getElementById('submit-values');
         const connectionStatus = document.getElementById('connection-status');
+        const matchProgress = document.getElementById('match-progress');
 
         // Canvas
         const teacherCanvas = document.getElementById('teacher-canvas');
@@ -204,7 +211,14 @@
 
         // Event listeners
         teacherBtn.addEventListener('click', () => { showScreen(teacherScreen); initCanvases(); });
-        studentBtn.addEventListener('click', () => { showScreen(studentScreen); initCanvases(); });
+        studentBtn.addEventListener('click', () => { 
+            showScreen(studentScreen); 
+            initCanvases(); 
+            // Reset connection status when entering student screen
+            connectionStatus.className = 'connection-status';
+            connectionStatus.textContent = '';
+            matchProgress.style.width = '0%';
+        });
         teacherBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
         studentBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
 
@@ -213,6 +227,20 @@
         wavelengthSlider.addEventListener('input', updateWaveParams);
 
         submitBtn.addEventListener('click', checkMatch);
+
+        // Add input event listeners for student inputs to update the wave visualization in real-time
+        studentFreq.addEventListener('input', () => {
+            if (studentAnimationId) animateStudentWave();
+            updateMatchIndicator();
+        });
+        studentAmp.addEventListener('input', () => {
+            if (studentAnimationId) animateStudentWave();
+            updateMatchIndicator();
+        });
+        studentWavelength.addEventListener('input', () => {
+            if (studentAnimationId) animateStudentWave();
+            updateMatchIndicator();
+        });
 
         // Canvas sizing
         function initCanvases() {
@@ -270,6 +298,30 @@
             currentWavelength.textContent = waveParams.wavelength.toFixed(1);
         }
 
+        // Update match indicator based on current values
+        function updateMatchIndicator() {
+            const sFreq = parseFloat(studentFreq.value) || 0;
+            const sAmp = parseFloat(studentAmp.value) || 0;
+            const sWavelength = parseFloat(studentWavelength.value) || 0;
+            
+            const tolerance = 0.1;
+            const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance ? 1 : 0;
+            const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance ? 1 : 0;
+            const wavelengthMatch = Math.abs(sWavelength - waveParams.wavelength) <= tolerance ? 1 : 0;
+            
+            const matchPercentage = (freqMatch + ampMatch + wavelengthMatch) / 3 * 100;
+            matchProgress.style.width = matchPercentage + '%';
+            
+            // Change color based on match level
+            if (matchPercentage < 33) {
+                matchProgress.style.background = '#e74c3c';
+            } else if (matchPercentage < 100) {
+                matchProgress.style.background = '#f39c12';
+            } else {
+                matchProgress.style.background = '#2ecc71';
+            }
+        }
+
         // Matching logic (no network)
         function checkMatch() {
             const name = (studentName.value || '').trim();
@@ -278,12 +330,20 @@
             const sWavelength = parseFloat(studentWavelength.value);
 
             if (!name) { showNotification('Please enter your name', true); return; }
-            if (isNaN(sFreq) || isNaN(sAmp) || isNaN(sWavelength)) { showNotification('Please enter valid numbers', true); return; }
+            if (isNaN(sFreq) || isNaN(sAmp) || isNaN(sWavelength)) { 
+                showNotification('Please enter valid numbers', true); 
+                return; 
+            }
 
+            // Use a more precise matching approach
             const tolerance = 0.1;
             const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance;
             const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance;
             const wavelengthMatch = Math.abs(sWavelength - waveParams.wavelength) <= tolerance;
+
+            console.log(`Student: ${sFreq}, ${sAmp}, ${sWavelength}`);
+            console.log(`Teacher: ${waveParams.frequency}, ${waveParams.amplitude}, ${waveParams.wavelength}`);
+            console.log(`Matches: ${freqMatch}, ${ampMatch}, ${wavelengthMatch}`);
 
             if (freqMatch && ampMatch && wavelengthMatch) {
                 // success
@@ -300,7 +360,19 @@
                 connectionStatus.textContent = 'Parameters do not match. Try again.';
                 connectionStatus.className = 'connection-status disconnected';
                 showNotification("Parameters don't match.", true);
+                
+                // Provide hints about which parameters are wrong
+                let hint = "Try adjusting: ";
+                if (!freqMatch) hint += "frequency, ";
+                if (!ampMatch) hint += "amplitude, ";
+                if (!wavelengthMatch) hint += "wavelength, ";
+                hint = hint.slice(0, -2); // Remove trailing comma and space
+                
+                showNotification(hint, true);
             }
+            
+            // Update match indicator to show final result
+            updateMatchIndicator();
         }
 
         function updateStudentCountDisplay() {
@@ -335,6 +407,9 @@
             drawWave(studentCtx, studentCanvas, studentParams, time);
             time += 0.05;
             studentAnimationId = requestAnimationFrame(animateStudentWave);
+            
+            // Update match indicator in real-time
+            updateMatchIndicator();
         }
 
         // draw wave helper
