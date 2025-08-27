@@ -290,6 +290,26 @@
             display: none;
         }
         
+        .code-display {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+        
+        .copy-btn {
+            background: #2196F3;
+            margin-top: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #0b7dda;
+        }
+        
         @media (max-width: 768px) {
             .simulator-container {
                 flex-direction: column;
@@ -317,13 +337,13 @@
             <div class="role-card teacher" id="teacherRole">
                 <div class="role-icon">👨‍🏫</div>
                 <h2>Teacher</h2>
-                <p>Set wave parameters and see which students match them</p>
+                <p>Set wave parameters and share a code with students</p>
             </div>
             
             <div class="role-card student" id="studentRole">
                 <div class="role-icon">👨‍🎓</div>
                 <h2>Student</h2>
-                <p>Enter your name and try to match the teacher's wave parameters</p>
+                <p>Enter the code from your teacher and match the wave parameters</p>
             </div>
         </div>
         
@@ -355,6 +375,12 @@
                     <input type="number" id="teacherVelocity" min="1" max="100" value="60">
                 </div>
                 <button class="teacher-btn" id="setTeacherWave">Set Wave Parameters</button>
+                
+                <div class="input-group">
+                    <label>Connection Code (Share with Students)</label>
+                    <div class="code-display" id="teacherCode">Not generated</div>
+                    <button class="copy-btn" id="copyCode">Copy Code</button>
+                </div>
                 
                 <div class="status disconnected" id="teacherStatus">
                     Waiting for parameters...
@@ -389,6 +415,10 @@
         <div class="simulator-container" id="studentScreen">
             <div class="panel student-panel">
                 <h2><i>👨‍🎓</i> Student Section</h2>
+                <div class="input-group">
+                    <label for="connectionCode">Connection Code</label>
+                    <input type="text" id="connectionCode" placeholder="Enter code from teacher">
+                </div>
                 <div class="input-group">
                     <label for="studentName">Your Name</label>
                     <input type="text" id="studentName" placeholder="Enter your name">
@@ -451,6 +481,9 @@
             const passwordInput = document.getElementById('passwordInput');
             const submitPassword = document.getElementById('submitPassword');
             const passwordError = document.getElementById('passwordError');
+            const teacherCode = document.getElementById('teacherCode');
+            const copyCode = document.getElementById('copyCode');
+            const connectionCode = document.getElementById('connectionCode');
             
             // Teacher elements
             const teacherWavelength = document.getElementById('teacherWavelength');
@@ -500,6 +533,11 @@
             // Store connected students
             let connectedStudents = [];
             
+            // Generate a random code for the teacher
+            function generateCode() {
+                return Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+            
             // Event listeners for role selection
             teacherRole.addEventListener('click', function() {
                 passwordPrompt.style.display = 'flex';
@@ -522,15 +560,37 @@
                     updateStudentList();
                     passwordInput.value = '';
                     passwordError.style.display = 'none';
+                    
+                    // Generate and display a connection code
+                    const code = generateCode();
+                    teacherCode.textContent = code;
+                    localStorage.setItem('waveTeacherCode', code);
+                    localStorage.setItem('waveTeacherParams', JSON.stringify(teacherWaveParams));
                 } else {
                     passwordError.style.display = 'block';
                 }
+            });
+            
+            copyCode.addEventListener('click', function() {
+                navigator.clipboard.writeText(teacherCode.textContent)
+                    .then(() => {
+                        const originalText = copyCode.textContent;
+                        copyCode.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyCode.textContent = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                    });
             });
             
             backFromTeacher.addEventListener('click', function() {
                 teacherScreen.style.display = 'none';
                 roleSelection.style.display = 'flex';
                 cancelAnimationFrame(teacherAnimationId);
+                localStorage.removeItem('waveTeacherCode');
+                localStorage.removeItem('waveTeacherParams');
             });
             
             backFromStudent.addEventListener('click', function() {
@@ -565,6 +625,9 @@
                 teacherStatus.textContent = "Parameters set!";
                 teacherStatus.className = "status connected";
                 
+                // Save to localStorage
+                localStorage.setItem('waveTeacherParams', JSON.stringify(teacherWaveParams));
+                
                 // Clear connected students when teacher changes parameters
                 connectedStudents = [];
                 updateStudentList();
@@ -587,14 +650,38 @@
                     return;
                 }
                 
+                if (!connectionCode.value.trim()) {
+                    matchStatus.textContent = "Please enter the connection code first";
+                    matchStatus.className = "status disconnected";
+                    return;
+                }
+                
+                // Check if the code matches
+                const storedCode = localStorage.getItem('waveTeacherCode');
+                if (connectionCode.value.trim() !== storedCode) {
+                    matchStatus.textContent = "Invalid connection code";
+                    matchStatus.className = "status disconnected";
+                    return;
+                }
+                
                 // Update student params from inputs
                 updateStudentWaveParams();
                 
+                // Get teacher params from localStorage
+                const storedParams = localStorage.getItem('waveTeacherParams');
+                if (!storedParams) {
+                    matchStatus.textContent = "Teacher parameters not found";
+                    matchStatus.className = "status disconnected";
+                    return;
+                }
+                
+                const teacherParams = JSON.parse(storedParams);
+                
                 // Check if values match (with a small tolerance for floating point numbers)
                 const isMatch = 
-                    Math.abs(studentWaveParams.wavelength - teacherWaveParams.wavelength) < 0.01 &&
-                    Math.abs(studentWaveParams.frequency - teacherWaveParams.frequency) < 0.01 &&
-                    Math.abs(studentWaveParams.velocity - teacherWaveParams.velocity) < 0.01;
+                    Math.abs(studentWaveParams.wavelength - teacherParams.wavelength) < 0.01 &&
+                    Math.abs(studentWaveParams.frequency - teacherParams.frequency) < 0.01 &&
+                    Math.abs(studentWaveParams.velocity - teacherParams.velocity) < 0.01;
                 
                 if (isMatch) {
                     matchStatus.textContent = "Match Status: Connected!";
@@ -616,9 +703,9 @@
                     
                     // Show what the correct values should be
                     matchStatus.innerHTML = `Match Status: Values don't match!<br>
-                        Required: Wavelength=${teacherWaveParams.wavelength}, 
-                        Frequency=${teacherWaveParams.frequency}, 
-                        Velocity=${teacherWaveParams.velocity}`;
+                        Required: Wavelength=${teacherParams.wavelength}, 
+                        Frequency=${teacherParams.frequency}, 
+                        Velocity=${teacherParams.velocity}`;
                 }
             }
             
