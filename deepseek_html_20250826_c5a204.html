@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Wave Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2a3c8c);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            color: #ffcc00;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #ffd633;
+            margin-bottom: 15px;
+        }
+        
+        .simulator-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: #ffcc00;
+            text-align: center;
+        }
+        
+        .media-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .media-button {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .media-button:hover {
+            background: rgba(255, 204, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .media-button.active {
+            background: rgba(255, 204, 0, 0.5);
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+        }
+        
+        .media-button .speed {
+            font-size: 0.9rem;
+            color: #ffd633;
+        }
+        
+        .wave-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .wave-properties {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .wave-properties {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .property {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .property-label {
+            font-size: 0.9rem;
+            color: #ffd633;
+            margin-bottom: 5px;
+        }
+        
+        .property-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .explanation {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .explanation h2 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .key-points {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .key-points {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .point {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ffcc00;
+        }
+        
+        .point h3 {
+            color: #ffcc00;
+            margin-bottom: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .conclusion {
+            background: rgba(255, 204, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 204, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sound Wave Simulator</h1>
+            <p class="subtitle">Explore how sound travels at different speeds through various media</p>
+        </header>
+        
+        <div class="simulator-container">
+            <div class="controls">
+                <div class="control-panel">
+                    <h2>Select a Medium</h2>
+                    <div class="media-selector">
+                        <button class="media-button active" data-medium="air" data-speed="343">
+                            <span>Air (Gas)</span>
+                            <span class="speed">343 m/s</span>
+                        </button>
+                        <button class="media-button" data-medium="water" data-speed="1480">
+                            <span>Water (Liquid)</span>
+                            <span class="speed">1,480 m/s</span>
+                        </button>
+                        <button class="media-button" data-medium="steel" data-speed="5960">
+                            <span>Steel (Solid)</span>
+                            <span class="speed">5,960 m/s</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-panel">
+                    <h2>Wave Properties</h2>
+                    <div class="wave-properties">
+                        <div class="property">
+                            <div class="property-label">Frequency</div>
+                            <div class="property-value" id="frequency">1000 Hz</div>
+                        </div>
+                        <div class="property">
+                            <div class="property-label">Wave Speed</div>
+                            <div class="property-value" id="speed">343 m/s</div>
+                        </div>
+                        <div class="property">
+                            <div class="property-label">Wavelength</div>
+                            <div class="property-value" id="wavelength">0.34 m</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="wave-display">
+                <h2>Wave Visualization</h2>
+                <div class="canvas-container">
+                    <canvas id="waveCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explanation">
+            <h2>How Sound Travels Through Different Media</h2>
+            <p>Sound is a mechanical wave that requires a medium to travel. The speed of sound depends on the properties of the medium, such as its density and elasticity.</p>
+            
+            <div class="key-points">
+                <div class="point">
+                    <h3>Same Frequency</h3>
+                    <p>When sound travels through different media, its frequency remains constant. Your ear hears the same pitch regardless of the medium.</p>
+                </div>
+                <div class="point">
+                    <h3>Changing Wavelength</h3>
+                    <p>Since wave speed = frequency × wavelength, when speed changes and frequency stays constant, the wavelength must change.</p>
+                </div>
+            </div>
+            
+            <div class="conclusion">
+                <p>Sound travels slowest in gases, faster in liquids, and fastest in solids. This shows how the medium affects the wave speed while the frequency remains constant.</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Sound Wave Simulator | Created with HTML, CSS, and JavaScript</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('waveCanvas');
+            const ctx = canvas.getContext('2d');
+            const mediaButtons = document.querySelectorAll('.media-button');
+            const speedElement = document.getElementById('speed');
+            const wavelengthElement = document.getElementById('wavelength');
+            
+            // Set initial medium
+            let currentMedium = 'air';
+            let currentSpeed = 343; // m/s
+            const frequency = 1000; // Hz
+            let wavelength = currentSpeed / frequency; // meters
+            
+            // Update wavelength display
+            function updateWavelength() {
+                wavelength = currentSpeed / frequency;
+                wavelengthElement.textContent = wavelength.toFixed(2) + ' m';
+                speedElement.textContent = currentSpeed.toLocaleString() + ' m/s';
+            }
+            
+            // Set canvas dimensions
+            function resizeCanvas() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            
+            // Initial resize
+            resizeCanvas();
+            
+            // Draw wave function
+            function drawWave() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const centerY = canvas.height / 2;
+                const amplitude = 40;
+                
+                // Draw grid lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                
+                // Horizontal grid lines
+                for (let y = centerY - 60; y > 0; y -= 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                for (let y = centerY + 60; y < canvas.height; y += 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // Draw x-axis
+                ctx.beginPath();
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(canvas.width, centerY);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Calculate points for wave
+                const points = [];
+                const angularFrequency = 2 * Math.PI * frequency;
+                
+                // Adjust wave number based on wavelength (which depends on medium)
+                const waveNumber = 2 * Math.PI / wavelength;
+                
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const y = centerY + amplitude * Math.sin(waveNumber * x - angularFrequency * 0.01 * performance.now() / 1000);
+                    points.push({x, y});
+                }
+                
+                // Draw wave
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                
+                // Set wave color based on medium
+                if (currentMedium === 'air') {
+                    ctx.strokeStyle = '#4fc3f7';
+                } else if (currentMedium === 'water') {
+                    ctx.strokeStyle = '#00e676';
+                } else {
+                    ctx.strokeStyle = '#ff4081';
+                }
+                
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw medium label
+                ctx.font = 'bold 16px Arial';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.textAlign = 'center';
+                
+                if (currentMedium === 'air') {
+                    ctx.fillText('Air (Gas)', canvas.width / 2, 30);
+                } else if (currentMedium === 'water') {
+                    ctx.fillText('Water (Liquid)', canvas.width / 2, 30);
+                } else {
+                    ctx.fillText('Steel (Solid)', canvas.width / 2, 30);
+                }
+                
+                // Draw particles to represent medium
+                const particleCount = 20;
+                const particleSize = currentMedium === 'air' ? 3 : currentMedium === 'water' ? 5 : 7;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const x = (i / particleCount) * canvas.width;
+                    const y = centerY + (Math.random() * 20 - 10);
+                    
+                    if (currentMedium === 'air') {
+                        ctx.fillStyle = 'rgba(79, 195, 247, 0.7)';
+                    } else if (currentMedium === 'water') {
+                        ctx.fillStyle = 'rgba(0, 230, 118, 0.7)';
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 64, 129, 0.7)';
+                    }
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                requestAnimationFrame(drawWave);
+            }
+            
+            // Start animation
+            drawWave();
+            
+            // Media selection
+            mediaButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    mediaButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    // Update current medium and speed
+                    currentMedium = this.dataset.medium;
+                    currentSpeed = parseInt(this.dataset.speed);
+                    
+                    // Update wavelength
+                    updateWavelength();
+                });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                resizeCanvas();
+            });
+            
+            // Initialize wavelength
+            updateWavelength();
+        });
+    </script>
+</body>
+</html>
