@@ -230,7 +230,7 @@
             // Reset connection status when entering student screen
             connectionStatus.className = 'connection-status';
             connectionStatus.textContent = '';
-            matchProgress.style.width = '0%';
+            // Update indicator so student preview uses teacher values if inputs empty
             updateMatchIndicator();
         });
         teacherBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
@@ -319,10 +319,11 @@
         }
 
         // Update match indicator based on current values
+        // NOTE: if student input fields are empty, treat them as the teacher's values
         function updateMatchIndicator() {
-            const sFreq = Number(studentFreq.value) || 0;
-            const sAmp = Number(studentAmp.value) || 0;
-            const sWavelength = Number(studentWavelength.value) || 0;
+            const sFreq = (studentFreq.value !== '') ? Number(studentFreq.value) : waveParams.frequency;
+            const sAmp = (studentAmp.value !== '') ? Number(studentAmp.value) : waveParams.amplitude;
+            const sWavelength = (studentWavelength.value !== '') ? Number(studentWavelength.value) : waveParams.wavelength;
             
             const tolerance = 0.1;
             const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance ? 1 : 0;
@@ -433,12 +434,12 @@
             teacherAnimationId = requestAnimationFrame(animateTeacherWave);
         }
 
-        // animate student wave (uses student's inputs for preview)
+        // animate student wave (uses student's inputs for preview; if empty use teacher's values)
         function animateStudentWave() {
             studentCtx.clearRect(0,0,studentCanvas.width, studentCanvas.height);
-            const sFreq = studentFreq.value ? parseFloat(studentFreq.value) : 1.0;
-            const sAmp = studentAmp.value ? parseFloat(studentAmp.value) : 1.0;
-            const sWavelength = studentWavelength.value ? parseFloat(studentWavelength.value) : 1.0;
+            const sFreq = (studentFreq.value !== '') ? parseFloat(studentFreq.value) : waveParams.frequency;
+            const sAmp = (studentAmp.value !== '') ? parseFloat(studentAmp.value) : waveParams.amplitude;
+            const sWavelength = (studentWavelength.value !== '') ? parseFloat(studentWavelength.value) : waveParams.wavelength;
             const studentParams = { frequency: sFreq, amplitude: sAmp, wavelength: sWavelength };
             drawWave(studentCtx, studentCanvas, studentParams, time);
             time += 0.05;
@@ -481,8 +482,8 @@
 
         // init values & start teacher animation when teacher screen becomes active
         updateWaveParams();
-        // optional: auto-start teacher animation so teacher screen shows animation when clicked
-        // (we start it in showScreen when teacher screen selected)
+        // teacher animation starts when teacher screen opened via showScreen()
+
     </script>
 </body>
 </html>
