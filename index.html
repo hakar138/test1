@@ -1,489 +1,443 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Wave Matching Simulation</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
-        body { background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
-        .container { max-width:1000px; width:100%; background:rgba(255,255,255,0.95); border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.3); overflow:hidden; padding:20px;}
-        .screen { display:none; padding:10px 20px; }
-        .screen.active { display:block; }
-        h1 { text-align:center; color:#2c3e50; margin-bottom:12px; font-size:2.1rem; }
-        h2 { color:#3498db; margin-bottom:10px; }
-        .role-selector { text-align:center; padding:30px; }
-        .buttons { display:flex; justify-content:center; gap:20px; margin-top:20px; }
-        .btn { padding:12px 30px; font-size:1.05rem; border:none; border-radius:50px; cursor:pointer; transition:all .2s; font-weight:700; }
-        .teacher-btn { background:linear-gradient(90deg,#3498db,#2980b9); color:white; }
-        .student-btn { background:linear-gradient(90deg,#2ecc71,#27ae60); color:white; }
-        .btn:hover { transform:translateY(-4px); box-shadow:0 6px 12px rgba(0,0,0,0.15); }
-        .wave-controls { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:18px; }
-        .control-group { background:#f8f9fa; padding:14px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.06); }
-        .slider-container { margin:10px 0; }
-        .slider-label { display:flex; justify-content:space-between; margin-bottom:6px; }
-        input[type="range"] { width:100%; height:8px; -webkit-appearance:none; background:#ddd; border-radius:6px; outline:none; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#3498db; cursor:pointer; }
-        .value-display { font-weight:700; color:#2c3e50; }
-        .canvas-container { background:#2c3e50; border-radius:10px; overflow:hidden; margin:14px 0; box-shadow:0 5px 15px rgba(0,0,0,0.12); }
-        canvas { display:block; width:100%; }
-        .student-inputs { display:grid; grid-template-columns:1fr; gap:12px; margin:12px 0; }
-        .input-group { display:flex; flex-direction:column; }
-        label { margin-bottom:6px; font-weight:700; color:#2c3e50; }
-        input[type="number"], input[type="text"] { padding:10px; border:2px solid #ddd; border-radius:6px; font-size:1rem; }
-        .submit-btn { background:linear-gradient(90deg,#2ecc71,#27ae60); color:white; padding:12px; border:none; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:700; }
-        .submit-btn:hover { background:linear-gradient(90deg,#27ae60,#219653); }
-        .connection-status { text-align:center; padding:12px; margin:12px 0; border-radius:6px; font-weight:700; display:none; }
-        .connected { background:#d4edda; color:#155724; display:block; }
-        .disconnected { background:#f8d7da; color:#721c24; display:block; }
-        .back-btn { background:#95a5a6; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; margin-top:8px; }
-        .peer-connection { background:#e8f4fc; padding:12px; border-radius:10px; margin:10px 0; }
-        .user-count { text-align:center; font-size:1.05rem; margin:8px 0; color:#2c3e50; }
-        @media (max-width:768px){ .wave-controls { grid-template-columns:1fr; } .buttons{ flex-direction:column; } }
-        /* small notification */
-        #notification { position:fixed; top:18px; right:18px; padding:10px 14px; border-radius:6px; color:white; z-index:1000; opacity:0; transition:opacity .25s; }
-        .match-indicator { height: 6px; background: #e0e0e0; border-radius: 3px; margin: 10px 0; overflow: hidden; }
-        .match-progress { height: 100%; background: #2ecc71; width: 0%; transition: width 0.3s ease, background 0.3s ease; }
-        .connected-students { margin-top: 15px; }
-        .student-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .student-name { font-weight: bold; }
-        .student-values { font-size: 0.9rem; color: #555; margin-left: 8px; }
-        .student-time { font-size: 0.8rem; color: #888; margin-left: 8px; }
-        .connection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .reset-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Wave Matching Simulation — Debug Version</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;
+    background:linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d)}
+  .container{width:100%;max-width:1000px;background:rgba(255,255,255,.95);border-radius:14px;padding:18px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+  h1{font-size:1.6rem;color:#2c3e50;text-align:center;margin-bottom:8px}
+  .screens{min-height:64px}
+  .screen{display:none}
+  .screen.active{display:block}
+  .center{display:flex;gap:14px;align-items:center;justify-content:center;margin:12px 0}
+  .btn{padding:10px 18px;border-radius:40px;border:none;cursor:pointer;font-weight:700}
+  .teacher-btn{background:linear-gradient(90deg,#3498db,#2980b9);color:white}
+  .student-btn{background:linear-gradient(90deg,#2ecc71,#27ae60);color:white}
+  .back-btn{background:#95a5a6;color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .two-col{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:12px}
+  .panel{background:#f8f9fa;padding:12px;border-radius:10px;box-shadow:0 6px 14px rgba(0,0,0,.06)}
+  .control{margin-bottom:10px}
+  label{font-weight:700;color:#2c3e50;margin-bottom:6px;display:block}
+  input[type=range]{width:100%}
+  input[type=number],input[type=text]{width:100%;padding:8px;border-radius:6px;border:2px solid #ddd}
+  .canvas-wrap{background:#2c3e50;border-radius:8px;padding:6px}
+  canvas{display:block;width:100%;height:200px}
+  .match-indicator{height:10px;background:#e6e6e6;border-radius:6px;overflow:hidden;margin:8px 0}
+  .match-progress{height:100%;width:0%;background:#2ecc71;transition:width .12s linear,background .12s linear}
+  .connected-students{max-height:150px;overflow:auto;margin-top:10px}
+  .student-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:6px;background:#fff;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .debug{font-family:monospace;background:#fff;padding:8px;border-radius:6px;margin-top:8px;font-size:13px}
+  .small{font-size:13px;color:#444}
+  .controls-row{display:flex;gap:8px;align-items:center}
+  .action-btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .fill-btn{background:#3498db;color:white}
+  .redraw-btn{background:#f39c12;color:white}
+  .reset-btn{background:#e74c3c;color:white}
+  @media (max-width:880px){ .two-col{grid-template-columns:1fr} canvas{height:160px} }
+</style>
 </head>
 <body>
-    <div class="container">
-        <!-- Role Selection -->
-        <div class="screen active" id="role-selection">
-            <div class="role-selector">
-                <h1>Wave Matching Simulation</h1>
-                <p>Select your role to begin the interactive wave simulation</p>
-                <div class="buttons">
-                    <button class="btn teacher-btn" id="teacher-btn">I'm a Teacher</button>
-                    <button class="btn student-btn" id="student-btn">I'm a Student</button>
-                </div>
-            </div>
-        </div>
+  <div class="container">
+    <h1>Wave Matching Simulation — Debug mode</h1>
 
-        <!-- Teacher Screen -->
-        <div class="screen" id="teacher-screen">
-            <h1>Teacher's Wave Controller</h1>
-            <p>Adjust the wave parameters. Students enter their name & parameters to connect.</p>
-
-            <div class="wave-controls">
-                <div class="control-group">
-                    <h2>Wave Parameters</h2>
-                    <div class="slider-container">
-                        <div class="slider-label">
-                            <span>Frequency:</span><span class="value-display" id="freq-value">1.0 Hz</span>
-                        </div>
-                        <input type="range" id="freq-slider" min="0.5" max="3.0" step="0.1" value="1.0">
-                    </div>
-
-                    <div class="slider-container">
-                        <div class="slider-label">
-                            <span>Amplitude:</span><span class="value-display" id="amp-value">1.0</span>
-                        </div>
-                        <input type="range" id="amp-slider" min="0.5" max="2.0" step="0.1" value="1.0">
-                    </div>
-
-                    <div class="slider-container">
-                        <div class="slider-label">
-                            <span>Wavelength:</span><span class="value-display" id="wavelength-value">1.0</span>
-                        </div>
-                        <input type="range" id="wavelength-slider" min="0.5" max="2.0" step="0.1" value="1.0">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h2>Current Values</h2>
-                    <p>Frequency: <span id="current-freq">1.0</span> Hz</p>
-                    <p>Amplitude: <span id="current-amp">1.0</span></p>
-                    <p>Wavelength: <span id="current-wavelength">1.0</span></p>
-
-                    <div class="peer-connection">
-                        <div class="connection-header">
-                            <h2>Connected Students</h2>
-                            <button class="reset-btn" id="reset-connections">Reset</button>
-                        </div>
-                        <div class="user-count">Total connected: <span id="student-count">0</span></div>
-                        <div class="connected-students" id="connected-students-list">
-                            <p style="text-align: center; padding: 10px;" id="no-connections-msg">No students connected yet</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="teacher-canvas"></canvas>
-            </div>
-
-            <button class="back-btn" id="teacher-back">Back to Role Selection</button>
-        </div>
-
-        <!-- Student Screen -->
-        <div class="screen" id="student-screen">
-            <h1>Student Wave Matcher</h1>
-            <p>Enter your name and the wave parameters. If they're correct you'll see "Connected".</p>
-
-            <div class="peer-connection">
-                <h2>Enter Info</h2>
-                <div class="student-inputs">
-                    <div class="input-group">
-                        <label for="student-name">Your Name:</label>
-                        <input type="text" id="student-name" placeholder="Type your name...">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="student-freq">Frequency (Hz):</label>
-                        <input type="number" id="student-freq" step="0.1" min="0.5" max="3.0" placeholder="1.0">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="student-amp">Amplitude:</label>
-                        <input type="number" id="student-amp" step="0.1" min="0.5" max="2.0" placeholder="1.0">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="student-wavelength">Wavelength:</label>
-                        <input type="number" id="student-wavelength" step="0.1" min="0.5" max="2.0" placeholder="1.0">
-                    </div>
-
-                    <div class="match-indicator">
-                        <div class="match-progress" id="match-progress"></div>
-                    </div>
-
-                    <button class="submit-btn" id="submit-values">Check & Connect</button>
-                </div>
-
-                <div class="connection-status" id="connection-status"></div>
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="student-canvas"></canvas>
-            </div>
-
-            <button class="back-btn" id="student-back">Back to Role Selection</button>
-        </div>
+    <div class="center">
+      <button class="btn teacher-btn" id="teacher-btn">I'm a Teacher</button>
+      <button class="btn student-btn" id="student-btn">I'm a Student</button>
     </div>
 
-    <div id="notification"></div>
+    <div class="screens">
+      <!-- Role selection (initial) -->
+      <div id="role-selection" class="screen active panel">
+        <p class="small">Choose role to start. Use the teacher controls to set the wave, then switch to Student to try to match it.</p>
+      </div>
 
-    <script>
-        // DOM elements
-        const roleSelectionScreen = document.getElementById('role-selection');
-        const teacherScreen = document.getElementById('teacher-screen');
-        const studentScreen = document.getElementById('student-screen');
-        const teacherBtn = document.getElementById('teacher-btn');
-        const studentBtn = document.getElementById('student-btn');
-        const teacherBackBtn = document.getElementById('teacher-back');
-        const studentBackBtn = document.getElementById('student-back');
-        const resetConnectionsBtn = document.getElementById('reset-connections');
+      <!-- Teacher screen -->
+      <div id="teacher-screen" class="screen">
+        <div class="two-col">
+          <div class="panel">
+            <h2 class="small">Teacher Controls</h2>
 
-        // Teacher controls
-        const freqSlider = document.getElementById('freq-slider');
-        const ampSlider = document.getElementById('amp-slider');
-        const wavelengthSlider = document.getElementById('wavelength-slider');
-        const freqValue = document.getElementById('freq-value');
-        const ampValue = document.getElementById('amp-value');
-        const wavelengthValue = document.getElementById('wavelength-value');
-        const currentFreq = document.getElementById('current-freq');
-        const currentAmp = document.getElementById('current-amp');
-        const currentWavelength = document.getElementById('current-wavelength');
-        const studentCount = document.getElementById('student-count');
-        const connectedStudentsList = document.getElementById('connected-students-list');
-        const noConnectionsMsg = document.getElementById('no-connections-msg');
+            <div class="control">
+              <label>Frequency: <span id="freq-value" class="small">1.0 Hz</span></label>
+              <input id="freq-slider" type="range" min="0.2" max="5.0" step="0.05" value="1.0">
+            </div>
 
-        // Student controls
-        const studentName = document.getElementById('student-name');
-        const studentFreq = document.getElementById('student-freq');
-        const studentAmp = document.getElementById('student-amp');
-        const studentWavelength = document.getElementById('student-wavelength');
-        const submitBtn = document.getElementById('submit-values');
-        const connectionStatus = document.getElementById('connection-status');
-        const matchProgress = document.getElementById('match-progress');
+            <div class="control">
+              <label>Amplitude: <span id="amp-value" class="small">1.0</span></label>
+              <input id="amp-slider" type="range" min="0.1" max="3.0" step="0.05" value="1.0">
+            </div>
 
-        // Canvas
-        const teacherCanvas = document.getElementById('teacher-canvas');
-        const studentCanvas = document.getElementById('student-canvas');
-        const teacherCtx = teacherCanvas.getContext('2d');
-        const studentCtx = studentCanvas.getContext('2d');
+            <div class="control">
+              <label>Wavelength: <span id="wavelength-value" class="small">1.0</span></label>
+              <input id="wavelength-slider" type="range" min="0.2" max="3.0" step="0.05" value="1.0">
+            </div>
 
-        // Wave params (teacher)
-        let waveParams = { frequency:1.0, amplitude:1.0, wavelength:1.0 };
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="action-btn redraw-btn" id="redraw-teacher">Redraw now</button>
+              <button class="action-btn reset-btn" id="reset-connections">Reset connections</button>
+              <button class="action-btn back-btn" id="teacher-back">Back</button>
+            </div>
 
-        // Connected students (local demo)
-        let connectedStudents = [];
+            <h3 class="small" style="margin-top:12px">Connected students (local demo)</h3>
+            <div id="connected-list" class="connected-students"></div>
+          </div>
 
-        // Anim vars
-        let teacherAnimationId = null;
-        let studentAnimationId = null;
-        let time = 0;
+          <div class="panel">
+            <h3 class="small">Teacher Canvas</h3>
+            <div class="canvas-wrap"><canvas id="teacher-canvas"></canvas></div>
+            <div id="teacher-debug" class="debug"></div>
+          </div>
+        </div>
+      </div>
 
-        // Event listeners
-        teacherBtn.addEventListener('click', () => { showScreen(teacherScreen); initCanvases(); });
-        studentBtn.addEventListener('click', () => { 
-            showScreen(studentScreen); 
-            initCanvases(); 
-            // Reset connection status when entering student screen
-            connectionStatus.className = 'connection-status';
-            connectionStatus.textContent = '';
-            // Update indicator so student preview uses teacher values if inputs empty
-            updateMatchIndicator();
-        });
-        teacherBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
-        studentBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
-        resetConnectionsBtn.addEventListener('click', resetConnections);
+      <!-- Student screen -->
+      <div id="student-screen" class="screen">
+        <div class="two-col">
+          <div class="panel">
+            <h2 class="small">Student Inputs</h2>
 
-        freqSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
-        ampSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
-        wavelengthSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
+            <div class="control">
+              <label>Your name</label>
+              <input id="student-name" type="text" placeholder="Type your name">
+            </div>
 
-        submitBtn.addEventListener('click', checkMatch);
+            <div class="control">
+              <label>Frequency (Hz)</label>
+              <input id="student-freq" type="number" step="0.05" min="0.2" max="5.0" placeholder="Leave empty to preview teacher value">
+            </div>
 
-        // Student inputs update match indicator in real-time
-        studentFreq.addEventListener('input', updateMatchIndicator);
-        studentAmp.addEventListener('input', updateMatchIndicator);
-        studentWavelength.addEventListener('input', updateMatchIndicator);
-        studentName.addEventListener('input', () => {
-            // clear status when name changes
-            connectionStatus.className = 'connection-status';
-            connectionStatus.textContent = '';
-        });
+            <div class="control">
+              <label>Amplitude</label>
+              <input id="student-amp" type="number" step="0.05" min="0.1" max="3.0" placeholder="Leave empty to preview teacher value">
+            </div>
 
-        // Reset connections
-        function resetConnections() {
-            connectedStudents = [];
-            updateStudentCountDisplay();
-            showNotification('Connections reset', false);
-        }
+            <div class="control">
+              <label>Wavelength</label>
+              <input id="student-wavelength" type="number" step="0.05" min="0.2" max="3.0" placeholder="Leave empty to preview teacher value">
+            </div>
 
-        // Canvas sizing
-        function initCanvases() {
-            // use clientWidth to avoid fractional issues
-            teacherCanvas.width = Math.floor(teacherCanvas.clientWidth);
-            teacherCanvas.height = 200;
-            studentCanvas.width = Math.floor(studentCanvas.clientWidth);
-            studentCanvas.height = 200;
-        }
-        window.addEventListener('resize', () => { initCanvases(); /* redraw */ });
-        initCanvases();
+            <div class="match-indicator">
+              <div id="match-progress" class="match-progress" style="width:0%"></div>
+            </div>
+            <div id="match-text" class="small" style="margin-bottom:8px">Match: 0%</div>
 
-        // Screen management
-        function showScreen(screen) {
-            roleSelectionScreen.classList.remove('active');
-            teacherScreen.classList.remove('active');
-            studentScreen.classList.remove('active');
-            screen.classList.add('active');
+            <div style="display:flex;gap:8px">
+              <button class="action-btn fill-btn" id="fill-student">Fill student with teacher values</button>
+              <button class="action-btn redraw-btn" id="redraw-student">Redraw now</button>
+              <button class="action-btn back-btn" id="student-back">Back</button>
+            </div>
 
-            // animations
-            if (screen === teacherScreen) {
-                cancelAnimationFrame(studentAnimationId);
-                studentAnimationId = null;
-                time = 0;
-                if (!teacherAnimationId) animateTeacherWave();
-            } else if (screen === studentScreen) {
-                cancelAnimationFrame(teacherAnimationId);
-                teacherAnimationId = null;
-                time = 0;
-                if (!studentAnimationId) animateStudentWave();
-                updateMatchIndicator();
-            } else {
-                stopAllAnimations();
-            }
-        }
+            <div style="margin-top:8px">
+              <button class="btn student-btn" id="submit-values" style="width:100%;margin-top:10px">Check & Connect</button>
+            </div>
 
-        function stopAllAnimations() {
-            cancelAnimationFrame(teacherAnimationId);
-            cancelAnimationFrame(studentAnimationId);
-            teacherAnimationId = null;
-            studentAnimationId = null;
-        }
+            <div id="connection-status" class="small" style="margin-top:8px;color:#111"></div>
+          </div>
 
-        // Update teacher params
-        function updateWaveParams() {
-            waveParams.frequency = parseFloat(freqSlider.value);
-            waveParams.amplitude = parseFloat(ampSlider.value);
-            waveParams.wavelength = parseFloat(wavelengthSlider.value);
+          <div class="panel">
+            <h3 class="small">Student Canvas & Debug</h3>
+            <div class="canvas-wrap"><canvas id="student-canvas"></canvas></div>
+            <div id="student-debug" class="debug"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            // UI updates
-            freqValue.textContent = waveParams.frequency.toFixed(1) + ' Hz';
-            ampValue.textContent = waveParams.amplitude.toFixed(1);
-            wavelengthValue.textContent = waveParams.wavelength.toFixed(1);
+<script>
+/* ====== Elements ====== */
+const teacherBtn = document.getElementById('teacher-btn');
+const studentBtn = document.getElementById('student-btn');
+const roleSelection = document.getElementById('role-selection');
+const teacherScreen = document.getElementById('teacher-screen');
+const studentScreen = document.getElementById('student-screen');
+const teacherBack = document.getElementById('teacher-back');
+const studentBack = document.getElementById('student-back');
 
-            currentFreq.textContent = waveParams.frequency.toFixed(1);
-            currentAmp.textContent = waveParams.amplitude.toFixed(1);
-            currentWavelength.textContent = waveParams.wavelength.toFixed(1);
-        }
+const freqSlider = document.getElementById('freq-slider');
+const ampSlider = document.getElementById('amp-slider');
+const wavelengthSlider = document.getElementById('wavelength-slider');
+const freqValue = document.getElementById('freq-value');
+const ampValue = document.getElementById('amp-value');
+const wavelengthValue = document.getElementById('wavelength-value');
 
-        // Update match indicator based on current values
-        // NOTE: if student input fields are empty, treat them as the teacher's values
-        function updateMatchIndicator() {
-            const sFreq = (studentFreq.value !== '') ? Number(studentFreq.value) : waveParams.frequency;
-            const sAmp = (studentAmp.value !== '') ? Number(studentAmp.value) : waveParams.amplitude;
-            const sWavelength = (studentWavelength.value !== '') ? Number(studentWavelength.value) : waveParams.wavelength;
-            
-            const tolerance = 0.1;
-            const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance ? 1 : 0;
-            const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance ? 1 : 0;
-            const wavelengthMatch = Math.abs(sWavelength - waveParams.wavelength) <= tolerance ? 1 : 0;
-            
-            const matchPercentage = (freqMatch + ampMatch + wavelengthMatch) / 3 * 100;
-            matchProgress.style.width = matchPercentage + '%';
-            
-            // Change color based on match level
-            if (matchPercentage < 33) {
-                matchProgress.style.background = '#e74c3c';
-            } else if (matchPercentage < 100) {
-                matchProgress.style.background = '#f39c12';
-            } else {
-                matchProgress.style.background = '#2ecc71';
-            }
-        }
+const teacherCanvas = document.getElementById('teacher-canvas');
+const studentCanvas = document.getElementById('student-canvas');
+const teacherCtx = teacherCanvas.getContext('2d');
+const studentCtx = studentCanvas.getContext('2d');
+const teacherDebug = document.getElementById('teacher-debug');
+const studentDebug = document.getElementById('student-debug');
 
-        // Matching logic (no network)
-        function checkMatch() {
-            const name = (studentName.value || '').trim();
-            const sFreq = parseFloat(studentFreq.value);
-            const sAmp = parseFloat(studentAmp.value);
-            const sWavelength = parseFloat(studentWavelength.value);
+const studentName = document.getElementById('student-name');
+const studentFreq = document.getElementById('student-freq');
+const studentAmp = document.getElementById('student-amp');
+const studentWavelength = document.getElementById('student-wavelength');
+const matchProgress = document.getElementById('match-progress');
+const matchText = document.getElementById('match-text');
+const fillStudentBtn = document.getElementById('fill-student');
+const submitBtn = document.getElementById('submit-values');
+const connectionStatus = document.getElementById('connection-status');
+const connectedList = document.getElementById('connected-list');
+const resetConnections = document.getElementById('reset-connections');
 
-            if (!name) { showNotification('Please enter your name', true); return; }
-            if (isNaN(sFreq) || isNaN(sAmp) || isNaN(sWavelength)) { 
-                showNotification('Please enter valid numbers', true); 
-                return; 
-            }
+const redrawTeacherBtn = document.getElementById('redraw-teacher');
+const redrawStudentBtn = document.getElementById('redraw-student');
 
-            // Use a precise matching approach
-            const tolerance = 0.1;
-            const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance;
-            const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance;
-            const wavelengthMatch = Math.abs(sWavelength - waveParams.wavelength) <= tolerance;
+/* ====== State ====== */
+let waveParams = { frequency: 1.0, amplitude: 1.0, wavelength: 1.0 };
+let connectedStudents = [];
 
-            if (freqMatch && ampMatch && wavelengthMatch) {
-                // success
-                connectionStatus.textContent = `Connected — Welcome, ${name}!`;
-                connectionStatus.className = 'connection-status connected';
-                showNotification('Perfect match! Connected.', false);
+let teacherAnimation = null;
+let studentAnimation = null;
+let animTime = 0;
 
-                // add or update local connected list
-                const idx = connectedStudents.findIndex(s => s.name === name);
-                const entry = {
-                    name: name,
-                    frequency: sFreq,
-                    amplitude: sAmp,
-                    wavelength: sWavelength,
-                    time: new Date().toLocaleTimeString()
-                };
-                if (idx === -1) connectedStudents.push(entry);
-                else connectedStudents[idx] = entry;
-                updateStudentCountDisplay();
-            } else {
-                connectionStatus.textContent = 'Parameters do not match. Try again.';
-                connectionStatus.className = 'connection-status disconnected';
-                showNotification("Parameters don't match.", true);
-                
-                // Provide hints about which parameters are wrong
-                let hintList = [];
-                if (!freqMatch) hintList.push("frequency");
-                if (!ampMatch) hintList.push("amplitude");
-                if (!wavelengthMatch) hintList.push("wavelength");
-                if (hintList.length) showNotification("Try adjusting: " + hintList.join(", "), true);
-            }
-            
-            // Update match indicator to show final result
-            updateMatchIndicator();
-        }
+/* ====== Helpers ====== */
+function showScreen(screenEl){
+  roleSelection.classList.remove('active');
+  teacherScreen.classList.remove('active');
+  studentScreen.classList.remove('active');
+  screenEl.classList.add('active');
+}
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+function toNum(v, fallback=NaN){
+  if (v === '' || v === null || v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+function safeString(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-        function updateStudentCountDisplay() {
-            studentCount.textContent = connectedStudents.length;
-            
-            if (connectedStudents.length === 0) {
-                noConnectionsMsg.style.display = 'block';
-                connectedStudentsList.innerHTML = '';
-            } else {
-                noConnectionsMsg.style.display = 'none';
-                connectedStudentsList.innerHTML = connectedStudents.map(student => `
-                    <div class="student-item">
-                        <div style="display:flex; align-items:center;">
-                            <div class="student-name">${escapeHtml(String(student.name))}</div>
-                            <div class="student-values">F: ${Number(student.frequency).toFixed(1)} A: ${Number(student.amplitude).toFixed(1)} W: ${Number(student.wavelength).toFixed(1)}</div>
-                        </div>
-                        <div class="student-time">${escapeHtml(String(student.time))}</div>
-                    </div>
-                `).join('');
-            }
-        }
+/* ====== Canvas sizing & drawing ====== */
+function initCanvases(){
+  // ensure canvases sized to displayed width
+  teacherCanvas.width = Math.max(300, Math.floor(teacherCanvas.clientWidth));
+  teacherCanvas.height = 200;
+  studentCanvas.width = Math.max(300, Math.floor(studentCanvas.clientWidth));
+  studentCanvas.height = 200;
+}
+window.addEventListener('resize', ()=>{ initCanvases(); drawTeacherOnce(); drawStudentOnce(); });
 
-        // helper: small notification
-        function showNotification(message, isError = false) {
-            const n = document.getElementById('notification');
-            n.textContent = message;
-            n.style.background = isError ? '#e74c3c' : '#2ecc71';
-            n.style.opacity = '1';
-            setTimeout(() => { n.style.opacity = '0'; }, 2500);
-        }
+function drawWave(ctx, canvas, params, t){
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const centerY = h/2;
+  ctx.beginPath();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#3498db';
+  for (let x=0;x<w;x++){
+    // horizontal stretching uses wavelength: larger wavelength -> longer horizontal period
+    const xFactor = (x / w) * Math.PI * 4;
+    // prevent division by 0
+    const wl = Math.max(0.01, params.wavelength);
+    const y = centerY + Math.sin(xFactor / wl + t * params.frequency) * (centerY * 0.8 * params.amplitude);
+    if (x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
 
-        // animate teacher wave
-        function animateTeacherWave() {
-            teacherCtx.clearRect(0,0,teacherCanvas.width, teacherCanvas.height);
-            drawWave(teacherCtx, teacherCanvas, waveParams, time);
-            time += 0.05;
-            teacherAnimationId = requestAnimationFrame(animateTeacherWave);
-        }
+  // baseline
+  ctx.beginPath();
+  ctx.strokeStyle = '#95a5a6';
+  ctx.setLineDash([5,5]);
+  ctx.lineWidth = 1;
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(w, centerY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
 
-        // animate student wave (uses student's inputs for preview; if empty use teacher's values)
-        function animateStudentWave() {
-            studentCtx.clearRect(0,0,studentCanvas.width, studentCanvas.height);
-            const sFreq = (studentFreq.value !== '') ? parseFloat(studentFreq.value) : waveParams.frequency;
-            const sAmp = (studentAmp.value !== '') ? parseFloat(studentAmp.value) : waveParams.amplitude;
-            const sWavelength = (studentWavelength.value !== '') ? parseFloat(studentWavelength.value) : waveParams.wavelength;
-            const studentParams = { frequency: sFreq, amplitude: sAmp, wavelength: sWavelength };
-            drawWave(studentCtx, studentCanvas, studentParams, time);
-            time += 0.05;
-            studentAnimationId = requestAnimationFrame(animateStudentWave);
-            // Update match indicator in real-time
-            updateMatchIndicator();
-        }
+/* single-frame draws for debug */
+function drawTeacherOnce(){ drawWave(teacherCtx, teacherCanvas, waveParams, animTime); updateTeacherDebug(); }
+function drawStudentOnce(){
+  const s = getStudentPreviewParams();
+  drawWave(studentCtx, studentCanvas, s, animTime);
+  updateStudentDebug();
+}
 
-        // draw wave helper
-        function drawWave(ctx, canvas, params, time) {
-            const width = canvas.width;
-            const height = canvas.height;
-            const centerY = height / 2;
-            ctx.beginPath();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#3498db';
+/* animation loops */
+function animateTeacher(){
+  drawWave(teacherCtx, teacherCanvas, waveParams, animTime);
+  animTime += 0.04;
+  teacherAnimation = requestAnimationFrame(animateTeacher);
+}
+function animateStudent(){
+  const s = getStudentPreviewParams();
+  drawWave(studentCtx, studentCanvas, s, animTime);
+  // update progress and debug in animation for instant feedback
+  updateMatchIndicator();
+  animTime += 0.04;
+  studentAnimation = requestAnimationFrame(animateStudent);
+}
 
-            for (let x = 0; x < width; x++) {
-                const xFactor = (x / width) * 2 * Math.PI * 4;
-                const y = centerY + Math.sin(xFactor / params.wavelength + time * params.frequency) * (centerY * 0.8 * params.amplitude);
-                if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
+/* ====== UI updates & logic ====== */
+function updateWaveParamsFromSliders(){
+  waveParams.frequency = Number(freqSlider.value);
+  waveParams.amplitude = Number(ampSlider.value);
+  waveParams.wavelength = Number(wavelengthSlider.value);
+  // reflect into UI
+  freqValue.textContent = waveParams.frequency.toFixed(2) + ' Hz';
+  ampValue.textContent = waveParams.amplitude.toFixed(2);
+  wavelengthValue.textContent = waveParams.wavelength.toFixed(2);
+  // redraw teacher canvas immediately
+  drawTeacherOnce();
+}
 
-            // baseline
-            ctx.beginPath();
-            ctx.strokeStyle = '#95a5a6';
-            ctx.setLineDash([5,5]);
-            ctx.lineWidth = 1;
-            ctx.moveTo(0, centerY);
-            ctx.lineTo(width, centerY);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
+/* If a student field is empty we use teacher's value for preview only.
+   For "Check & Connect" the student must enter numbers explicitly. */
+function getStudentPreviewParams(){
+  const sf = (studentFreq.value !== '') ? Number(studentFreq.value) : waveParams.frequency;
+  const sa = (studentAmp.value !== '') ? Number(studentAmp.value) : waveParams.amplitude;
+  const sw = (studentWavelength.value !== '') ? Number(studentWavelength.value) : waveParams.wavelength;
+  return { frequency: clamp(sf, 0.01, 1000), amplitude: clamp(sa, 0.001, 1000), wavelength: clamp(sw, 0.001, 1000) };
+}
 
-        // sanitize for display
-        function escapeHtml(str) {
-            return String(str).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-        }
+function updateMatchIndicator(){
+  const s = getStudentPreviewParams();
+  const tol = 0.1;
+  const freqMatch = Math.abs(s.frequency - waveParams.frequency) <= tol ? 1 : 0;
+  const ampMatch = Math.abs(s.amplitude - waveParams.amplitude) <= tol ? 1 : 0;
+  const wlMatch = Math.abs(s.wavelength - waveParams.wavelength) <= tol ? 1 : 0;
+  const pct = Math.round((freqMatch + ampMatch + wlMatch) / 3 * 100);
+  matchProgress.style.width = pct + '%';
+  if (pct < 34) matchProgress.style.background = '#e74c3c';
+  else if (pct < 100) matchProgress.style.background = '#f39c12';
+  else matchProgress.style.background = '#2ecc71';
+  matchText.textContent = `Match: ${pct}%`;
+}
 
-        // init values & start teacher animation when teacher screen becomes active
-        updateWaveParams();
-        // teacher animation starts when teacher screen opened via showScreen()
+/* update small debug boxes */
+function updateTeacherDebug(){
+  teacherDebug.innerText = `teacher.waveParams = {\n  frequency: ${waveParams.frequency.toFixed(3)},\n  amplitude: ${waveParams.amplitude.toFixed(3)},\n  wavelength: ${waveParams.wavelength.toFixed(3)}\n}`;
+}
+function updateStudentDebug(){
+  const sRaw = {
+    studentFreq: studentFreq.value,
+    studentAmp: studentAmp.value,
+    studentWavelength: studentWavelength.value
+  };
+  const sPreview = getStudentPreviewParams();
+  studentDebug.innerText = `student.raw = ${JSON.stringify(sRaw)}\nstudent.preview = ${JSON.stringify({
+    frequency: Number(sPreview.frequency.toFixed(3)),
+    amplitude: Number(sPreview.amplitude.toFixed(3)),
+    wavelength: Number(sPreview.wavelength.toFixed(3))
+  })}`;
+}
 
-    </script>
+/* ====== Connect / match logic ====== */
+function checkAndConnect(){
+  const name = (studentName.value || '').trim();
+  const sFreq = toNum(studentFreq.value);
+  const sAmp  = toNum(studentAmp.value);
+  const sWl   = toNum(studentWavelength.value);
+
+  if (!name){ connectionStatus.textContent = 'Please enter your name'; connectionStatus.style.color = '#b22222'; return; }
+  if (Number.isNaN(sFreq) || Number.isNaN(sAmp) || Number.isNaN(sWl)){
+    connectionStatus.textContent = 'Please fill the three numeric fields to Check & Connect (they may be prefilled by "Fill student" button)';
+    connectionStatus.style.color = '#b22222';
+    return;
+  }
+
+  const tol = 0.1;
+  const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tol;
+  const ampMatch  = Math.abs(sAmp  - waveParams.amplitude) <= tol;
+  const wlMatch   = Math.abs(sWl   - waveParams.wavelength) <= tol;
+
+  if (freqMatch && ampMatch && wlMatch){
+    connectionStatus.textContent = `Connected — Welcome, ${name}!`;
+    connectionStatus.style.color = '#155724';
+    // add or update local connected list
+    const idx = connectedStudents.findIndex(s=>s.name===name);
+    const entry = { name, frequency: sFreq, amplitude: sAmp, wavelength: sWl, time: new Date().toLocaleTimeString() };
+    if (idx === -1) connectedStudents.push(entry); else connectedStudents[idx]=entry;
+    renderConnectedList();
+  } else {
+    connectionStatus.textContent = `Parameters don't match. Try adjusting ${!freqMatch? 'frequency ':''}${!ampMatch? 'amplitude ':''}${!wlMatch? 'wavelength ':''}`;
+    connectionStatus.style.color = '#b22222';
+  }
+  updateMatchIndicator();
+}
+
+function renderConnectedList(){
+  if (connectedStudents.length === 0){ connectedList.innerHTML = '<div class="small">No connected students yet</div>'; return; }
+  connectedList.innerHTML = connectedStudents.map(s=>`
+    <div class="student-item">
+      <div><strong>${safeString(s.name)}</strong><span style="margin-left:8px;color:#666">F:${Number(s.frequency).toFixed(2)} A:${Number(s.amplitude).toFixed(2)} W:${Number(s.wavelength).toFixed(2)}</span></div>
+      <div style="color:#888;font-size:12px">${safeString(s.time)}</div>
+    </div>`).join('');
+}
+
+/* ====== UI wiring ====== */
+teacherBtn.addEventListener('click', ()=>{ showScreen(teacherScreen); initCanvases(); startTeacherAnimation(); updateMatchIndicator(); });
+studentBtn.addEventListener('click', ()=>{ showScreen(studentScreen); initCanvases(); startStudentAnimation(); updateMatchIndicator(); connectionStatus.textContent=''; });
+
+teacherBack.addEventListener('click', ()=>{ showScreen(roleSelection); stopAllAnimations(); });
+studentBack.addEventListener('click', ()=>{ showScreen(roleSelection); stopAllAnimations(); });
+
+freqSlider.addEventListener('input', ()=>{ updateWaveParamsFromSliders(); updateMatchIndicator(); });
+ampSlider.addEventListener('input', ()=>{ updateWaveParamsFromSliders(); updateMatchIndicator(); });
+wavelengthSlider.addEventListener('input', ()=>{ updateWaveParamsFromSliders(); updateMatchIndicator(); });
+
+redrawTeacherBtn.addEventListener('click', ()=>{ drawTeacherOnce(); });
+redrawStudentBtn.addEventListener('click', ()=>{ drawStudentOnce(); });
+
+studentFreq.addEventListener('input', ()=>{ updateMatchIndicator(); });
+studentAmp.addEventListener('input', ()=>{ updateMatchIndicator(); });
+studentWavelength.addEventListener('input', ()=>{ updateMatchIndicator(); });
+
+fillStudentBtn.addEventListener('click', ()=>{
+  // fill numeric fields with teacher values for testing
+  studentFreq.value = waveParams.frequency;
+  studentAmp.value = waveParams.amplitude;
+  studentWavelength.value = waveParams.wavelength;
+  updateMatchIndicator(); drawStudentOnce();
+});
+
+submitBtn.addEventListener('click', ()=>{ checkAndConnect(); });
+
+resetConnections.addEventListener('click', ()=>{
+  connectedStudents = [];
+  renderConnectedList();
+});
+
+/* ====== Animation control (safe start/stop) ====== */
+function startTeacherAnimation(){
+  cancelAnimationFrame(teacherAnimation);
+  teacherAnimation = requestAnimationFrame(function loop(){
+    drawWave(teacherCtx, teacherCanvas, waveParams, animTime);
+    animTime += 0.04;
+    updateTeacherDebug();
+    teacherAnimation = requestAnimationFrame(loop);
+  });
+}
+function startStudentAnimation(){
+  cancelAnimationFrame(studentAnimation);
+  studentAnimation = requestAnimationFrame(function loop(){
+    const s = getStudentPreviewParams();
+    drawWave(studentCtx, studentCanvas, s, animTime);
+    animTime += 0.04;
+    updateStudentDebug();
+    updateMatchIndicator();
+    studentAnimation = requestAnimationFrame(loop);
+  });
+}
+function stopAllAnimations(){
+  cancelAnimationFrame(teacherAnimation);
+  cancelAnimationFrame(studentAnimation);
+  teacherAnimation = null;
+  studentAnimation = null;
+}
+
+/* ====== init ====== */
+initCanvases();
+updateWaveParamsFromSliders();
+renderConnectedList();
+updateTeacherDebug();
+updateStudentDebug();
+
+/* start teacher animation automatically so you can test right away if desired */
+startTeacherAnimation();
+</script>
 </body>
 </html>
