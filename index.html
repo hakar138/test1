@@ -130,7 +130,7 @@
             font-weight: 500;
         }
         
-        input[type="number"], input[type="text"] {
+        input[type="number"], input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
             border: none;
@@ -259,6 +259,37 @@
             color: #aaffaa;
         }
         
+        .password-prompt {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .password-box {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            width: 350px;
+            text-align: center;
+        }
+        
+        .password-box h2 {
+            margin-bottom: 20px;
+        }
+        
+        .password-error {
+            color: #ff6b6b;
+            margin-top: 10px;
+            display: none;
+        }
+        
         @media (max-width: 768px) {
             .simulator-container {
                 flex-direction: column;
@@ -293,6 +324,18 @@
                 <div class="role-icon">👨‍🎓</div>
                 <h2>Student</h2>
                 <p>Enter your name and try to match the teacher's wave parameters</p>
+            </div>
+        </div>
+        
+        <div class="password-prompt" id="passwordPrompt">
+            <div class="password-box">
+                <h2>Teacher Password Required</h2>
+                <div class="input-group">
+                    <label for="passwordInput">Enter Password:</label>
+                    <input type="password" id="passwordInput" placeholder="Enter password">
+                </div>
+                <button id="submitPassword">Submit</button>
+                <div class="password-error" id="passwordError">Incorrect password. Please try again.</div>
             </div>
         </div>
         
@@ -404,6 +447,10 @@
             const studentRole = document.getElementById('studentRole');
             const backFromTeacher = document.getElementById('backFromTeacher');
             const backFromStudent = document.getElementById('backFromStudent');
+            const passwordPrompt = document.getElementById('passwordPrompt');
+            const passwordInput = document.getElementById('passwordInput');
+            const submitPassword = document.getElementById('submitPassword');
+            const passwordError = document.getElementById('passwordError');
             
             // Teacher elements
             const teacherWavelength = document.getElementById('teacherWavelength');
@@ -455,11 +502,7 @@
             
             // Event listeners for role selection
             teacherRole.addEventListener('click', function() {
-                roleSelection.style.display = 'none';
-                teacherScreen.style.display = 'flex';
-                resizeCanvas(teacherCanvas);
-                animateTeacherWave();
-                updateStudentList();
+                passwordPrompt.style.display = 'flex';
             });
             
             studentRole.addEventListener('click', function() {
@@ -467,6 +510,21 @@
                 studentScreen.style.display = 'flex';
                 resizeCanvas(studentCanvas);
                 animateStudentWave();
+            });
+            
+            submitPassword.addEventListener('click', function() {
+                if (passwordInput.value === 'DHH') {
+                    passwordPrompt.style.display = 'none';
+                    roleSelection.style.display = 'none';
+                    teacherScreen.style.display = 'flex';
+                    resizeCanvas(teacherCanvas);
+                    animateTeacherWave();
+                    updateStudentList();
+                    passwordInput.value = '';
+                    passwordError.style.display = 'none';
+                } else {
+                    passwordError.style.display = 'block';
+                }
             });
             
             backFromTeacher.addEventListener('click', function() {
@@ -496,9 +554,9 @@
             }
             
             function setTeacherWaveParams() {
-                teacherWaveParams.wavelength = parseFloat(teacherWavelength.value);
-                teacherWaveParams.frequency = parseFloat(teacherFrequency.value);
-                teacherWaveParams.velocity = parseFloat(teacherVelocity.value);
+                teacherWaveParams.wavelength = parseFloat(teacherWavelength.value) || 0;
+                teacherWaveParams.frequency = parseFloat(teacherFrequency.value) || 0;
+                teacherWaveParams.velocity = parseFloat(teacherVelocity.value) || 0;
                 
                 displayWavelength.textContent = teacherWaveParams.wavelength;
                 displayFrequency.textContent = teacherWaveParams.frequency;
@@ -513,9 +571,9 @@
             }
             
             function updateStudentWaveParams() {
-                studentWaveParams.wavelength = parseFloat(studentWavelength.value);
-                studentWaveParams.frequency = parseFloat(studentFrequency.value);
-                studentWaveParams.velocity = parseFloat(studentVelocity.value);
+                studentWaveParams.wavelength = parseFloat(studentWavelength.value) || 0;
+                studentWaveParams.frequency = parseFloat(studentFrequency.value) || 0;
+                studentWaveParams.velocity = parseFloat(studentVelocity.value) || 0;
                 
                 studentDisplayWavelength.textContent = studentWaveParams.wavelength;
                 studentDisplayFrequency.textContent = studentWaveParams.frequency;
@@ -528,6 +586,9 @@
                     matchStatus.className = "status disconnected";
                     return;
                 }
+                
+                // Update student params from inputs
+                updateStudentWaveParams();
                 
                 // Check if values match (with a small tolerance for floating point numbers)
                 const isMatch = 
@@ -552,6 +613,12 @@
                     matchStatus.className = "status disconnected";
                     studentStatus.textContent = "No connection";
                     studentStatus.className = "status disconnected";
+                    
+                    // Show what the correct values should be
+                    matchStatus.innerHTML = `Match Status: Values don't match!<br>
+                        Required: Wavelength=${teacherWaveParams.wavelength}, 
+                        Frequency=${teacherWaveParams.frequency}, 
+                        Velocity=${teacherWaveParams.velocity}`;
                 }
             }
             
