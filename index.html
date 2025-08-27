@@ -43,12 +43,12 @@
         /* small notification */
         #notification { position:fixed; top:18px; right:18px; padding:10px 14px; border-radius:6px; color:white; z-index:1000; opacity:0; transition:opacity .25s; }
         .match-indicator { height: 6px; background: #e0e0e0; border-radius: 3px; margin: 10px 0; overflow: hidden; }
-        .match-progress { height: 100%; background: #2ecc71; width: 0%; transition: width 0.5s; }
+        .match-progress { height: 100%; background: #2ecc71; width: 0%; transition: width 0.3s ease, background 0.3s ease; }
         .connected-students { margin-top: 15px; }
         .student-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .student-name { font-weight: bold; }
-        .student-values { font-size: 0.9rem; color: #555; }
-        .student-time { font-size: 0.8rem; color: #888; }
+        .student-values { font-size: 0.9rem; color: #555; margin-left: 8px; }
+        .student-time { font-size: 0.8rem; color: #888; margin-left: 8px; }
         .connection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .reset-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     </style>
@@ -231,29 +231,26 @@
             connectionStatus.className = 'connection-status';
             connectionStatus.textContent = '';
             matchProgress.style.width = '0%';
+            updateMatchIndicator();
         });
         teacherBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
         studentBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
         resetConnectionsBtn.addEventListener('click', resetConnections);
 
-        freqSlider.addEventListener('input', updateWaveParams);
-        ampSlider.addEventListener('input', updateWaveParams);
-        wavelengthSlider.addEventListener('input', updateWaveParams);
+        freqSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
+        ampSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
+        wavelengthSlider.addEventListener('input', () => { updateWaveParams(); updateMatchIndicator(); });
 
         submitBtn.addEventListener('click', checkMatch);
 
-        // Add input event listeners for student inputs to update the wave visualization in real-time
-        studentFreq.addEventListener('input', () => {
-            if (studentAnimationId) animateStudentWave();
-            updateMatchIndicator();
-        });
-        studentAmp.addEventListener('input', () => {
-            if (studentAnimationId) animateStudentWave();
-            updateMatchIndicator();
-        });
-        studentWavelength.addEventListener('input', () => {
-            if (studentAnimationId) animateStudentWave();
-            updateMatchIndicator();
+        // Student inputs update match indicator in real-time
+        studentFreq.addEventListener('input', updateMatchIndicator);
+        studentAmp.addEventListener('input', updateMatchIndicator);
+        studentWavelength.addEventListener('input', updateMatchIndicator);
+        studentName.addEventListener('input', () => {
+            // clear status when name changes
+            connectionStatus.className = 'connection-status';
+            connectionStatus.textContent = '';
         });
 
         // Reset connections
@@ -265,12 +262,13 @@
 
         // Canvas sizing
         function initCanvases() {
-            teacherCanvas.width = teacherCanvas.offsetWidth;
+            // use clientWidth to avoid fractional issues
+            teacherCanvas.width = Math.floor(teacherCanvas.clientWidth);
             teacherCanvas.height = 200;
-            studentCanvas.width = studentCanvas.offsetWidth;
+            studentCanvas.width = Math.floor(studentCanvas.clientWidth);
             studentCanvas.height = 200;
         }
-        window.addEventListener('resize', initCanvases);
+        window.addEventListener('resize', () => { initCanvases(); /* redraw */ });
         initCanvases();
 
         // Screen management
@@ -291,6 +289,7 @@
                 teacherAnimationId = null;
                 time = 0;
                 if (!studentAnimationId) animateStudentWave();
+                updateMatchIndicator();
             } else {
                 stopAllAnimations();
             }
@@ -321,9 +320,9 @@
 
         // Update match indicator based on current values
         function updateMatchIndicator() {
-            const sFreq = parseFloat(studentFreq.value) || 0;
-            const sAmp = parseFloat(studentAmp.value) || 0;
-            const sWavelength = parseFloat(studentWavelength.value) || 0;
+            const sFreq = Number(studentFreq.value) || 0;
+            const sAmp = Number(studentAmp.value) || 0;
+            const sWavelength = Number(studentWavelength.value) || 0;
             
             const tolerance = 0.1;
             const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance ? 1 : 0;
@@ -356,7 +355,7 @@
                 return; 
             }
 
-            // Use a more precise matching approach
+            // Use a precise matching approach
             const tolerance = 0.1;
             const freqMatch = Math.abs(sFreq - waveParams.frequency) <= tolerance;
             const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance;
@@ -368,42 +367,29 @@
                 connectionStatus.className = 'connection-status connected';
                 showNotification('Perfect match! Connected.', false);
 
-                // add to local connected list if not already present
-                const alreadyConnected = connectedStudents.some(student => student.name === name);
-                if (!alreadyConnected) {
-                    connectedStudents.push({
-                        name: name,
-                        frequency: sFreq,
-                        amplitude: sAmp,
-                        wavelength: sWavelength,
-                        time: new Date().toLocaleTimeString()
-                    });
-                    updateStudentCountDisplay();
-                } else {
-                    // Update existing student's values
-                    const studentIndex = connectedStudents.findIndex(student => student.name === name);
-                    connectedStudents[studentIndex] = {
-                        name: name,
-                        frequency: sFreq,
-                        amplitude: sAmp,
-                        wavelength: sWavelength,
-                        time: new Date().toLocaleTimeString()
-                    };
-                    updateStudentCountDisplay();
-                }
+                // add or update local connected list
+                const idx = connectedStudents.findIndex(s => s.name === name);
+                const entry = {
+                    name: name,
+                    frequency: sFreq,
+                    amplitude: sAmp,
+                    wavelength: sWavelength,
+                    time: new Date().toLocaleTimeString()
+                };
+                if (idx === -1) connectedStudents.push(entry);
+                else connectedStudents[idx] = entry;
+                updateStudentCountDisplay();
             } else {
                 connectionStatus.textContent = 'Parameters do not match. Try again.';
                 connectionStatus.className = 'connection-status disconnected';
                 showNotification("Parameters don't match.", true);
                 
                 // Provide hints about which parameters are wrong
-                let hint = "Try adjusting: ";
-                if (!freqMatch) hint += "frequency, ";
-                if (!ampMatch) hint += "amplitude, ";
-                if (!wavelengthMatch) hint += "wavelength, ";
-                hint = hint.slice(0, -2); // Remove trailing comma and space
-                
-                showNotification(hint, true);
+                let hintList = [];
+                if (!freqMatch) hintList.push("frequency");
+                if (!ampMatch) hintList.push("amplitude");
+                if (!wavelengthMatch) hintList.push("wavelength");
+                if (hintList.length) showNotification("Try adjusting: " + hintList.join(", "), true);
             }
             
             // Update match indicator to show final result
@@ -420,9 +406,11 @@
                 noConnectionsMsg.style.display = 'none';
                 connectedStudentsList.innerHTML = connectedStudents.map(student => `
                     <div class="student-item">
-                        <div class="student-name">${escapeHtml(student.name)}</div>
-                        <div class="student-values">F: ${student.frequency.toFixed(1)} A: ${student.amplitude.toFixed(1)} W: ${student.wavelength.toFixed(1)}</div>
-                        <div class="student-time">${student.time}</div>
+                        <div style="display:flex; align-items:center;">
+                            <div class="student-name">${escapeHtml(String(student.name))}</div>
+                            <div class="student-values">F: ${Number(student.frequency).toFixed(1)} A: ${Number(student.amplitude).toFixed(1)} W: ${Number(student.wavelength).toFixed(1)}</div>
+                        </div>
+                        <div class="student-time">${escapeHtml(String(student.time))}</div>
                     </div>
                 `).join('');
             }
@@ -455,7 +443,6 @@
             drawWave(studentCtx, studentCanvas, studentParams, time);
             time += 0.05;
             studentAnimationId = requestAnimationFrame(animateStudentWave);
-            
             // Update match indicator in real-time
             updateMatchIndicator();
         }
@@ -470,7 +457,6 @@
             ctx.strokeStyle = '#3498db';
 
             for (let x = 0; x < width; x++) {
-                // xFactor uses wavelength to scale horizontal stretch
                 const xFactor = (x / width) * 2 * Math.PI * 4;
                 const y = centerY + Math.sin(xFactor / params.wavelength + time * params.frequency) * (centerY * 0.8 * params.amplitude);
                 if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
@@ -490,11 +476,13 @@
 
         // sanitize for display
         function escapeHtml(str) {
-            return str.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+            return String(str).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
 
-        // init values
+        // init values & start teacher animation when teacher screen becomes active
         updateWaveParams();
+        // optional: auto-start teacher animation so teacher screen shows animation when clicked
+        // (we start it in showScreen when teacher screen selected)
     </script>
 </body>
 </html>
