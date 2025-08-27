@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Wave Matching Simulation (Fixed)</title>
+    <title>Wave Matching Simulation</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
         body { background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d); min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
@@ -44,6 +44,13 @@
         #notification { position:fixed; top:18px; right:18px; padding:10px 14px; border-radius:6px; color:white; z-index:1000; opacity:0; transition:opacity .25s; }
         .match-indicator { height: 6px; background: #e0e0e0; border-radius: 3px; margin: 10px 0; overflow: hidden; }
         .match-progress { height: 100%; background: #2ecc71; width: 0%; transition: width 0.5s; }
+        .connected-students { margin-top: 15px; }
+        .student-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .student-name { font-weight: bold; }
+        .student-values { font-size: 0.9rem; color: #555; }
+        .student-time { font-size: 0.8rem; color: #888; }
+        .connection-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .reset-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -97,10 +104,14 @@
                     <p>Wavelength: <span id="current-wavelength">1.0</span></p>
 
                     <div class="peer-connection">
-                        <h2>Connections (local)</h2>
-                        <p>Students that matched successfully (local demo only):</p>
-                        <div class="user-count">Connected students: <span id="student-count">0</span></div>
-                        <div id="connected-list" style="max-height:100px; overflow:auto; font-size:0.95rem;"></div>
+                        <div class="connection-header">
+                            <h2>Connected Students</h2>
+                            <button class="reset-btn" id="reset-connections">Reset</button>
+                        </div>
+                        <div class="user-count">Total connected: <span id="student-count">0</span></div>
+                        <div class="connected-students" id="connected-students-list">
+                            <p style="text-align: center; padding: 10px;" id="no-connections-msg">No students connected yet</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -169,6 +180,7 @@
         const studentBtn = document.getElementById('student-btn');
         const teacherBackBtn = document.getElementById('teacher-back');
         const studentBackBtn = document.getElementById('student-back');
+        const resetConnectionsBtn = document.getElementById('reset-connections');
 
         // Teacher controls
         const freqSlider = document.getElementById('freq-slider');
@@ -181,7 +193,8 @@
         const currentAmp = document.getElementById('current-amp');
         const currentWavelength = document.getElementById('current-wavelength');
         const studentCount = document.getElementById('student-count');
-        const connectedList = document.getElementById('connected-list');
+        const connectedStudentsList = document.getElementById('connected-students-list');
+        const noConnectionsMsg = document.getElementById('no-connections-msg');
 
         // Student controls
         const studentName = document.getElementById('student-name');
@@ -221,6 +234,7 @@
         });
         teacherBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
         studentBackBtn.addEventListener('click', () => { showScreen(roleSelectionScreen); stopAllAnimations(); });
+        resetConnectionsBtn.addEventListener('click', resetConnections);
 
         freqSlider.addEventListener('input', updateWaveParams);
         ampSlider.addEventListener('input', updateWaveParams);
@@ -241,6 +255,13 @@
             if (studentAnimationId) animateStudentWave();
             updateMatchIndicator();
         });
+
+        // Reset connections
+        function resetConnections() {
+            connectedStudents = [];
+            updateStudentCountDisplay();
+            showNotification('Connections reset', false);
+        }
 
         // Canvas sizing
         function initCanvases() {
@@ -341,10 +362,6 @@
             const ampMatch = Math.abs(sAmp - waveParams.amplitude) <= tolerance;
             const wavelengthMatch = Math.abs(sWavelength - waveParams.wavelength) <= tolerance;
 
-            console.log(`Student: ${sFreq}, ${sAmp}, ${sWavelength}`);
-            console.log(`Teacher: ${waveParams.frequency}, ${waveParams.amplitude}, ${waveParams.wavelength}`);
-            console.log(`Matches: ${freqMatch}, ${ampMatch}, ${wavelengthMatch}`);
-
             if (freqMatch && ampMatch && wavelengthMatch) {
                 // success
                 connectionStatus.textContent = `Connected — Welcome, ${name}!`;
@@ -352,8 +369,26 @@
                 showNotification('Perfect match! Connected.', false);
 
                 // add to local connected list if not already present
-                if (!connectedStudents.includes(name)) {
-                    connectedStudents.push(name);
+                const alreadyConnected = connectedStudents.some(student => student.name === name);
+                if (!alreadyConnected) {
+                    connectedStudents.push({
+                        name: name,
+                        frequency: sFreq,
+                        amplitude: sAmp,
+                        wavelength: sWavelength,
+                        time: new Date().toLocaleTimeString()
+                    });
+                    updateStudentCountDisplay();
+                } else {
+                    // Update existing student's values
+                    const studentIndex = connectedStudents.findIndex(student => student.name === name);
+                    connectedStudents[studentIndex] = {
+                        name: name,
+                        frequency: sFreq,
+                        amplitude: sAmp,
+                        wavelength: sWavelength,
+                        time: new Date().toLocaleTimeString()
+                    };
                     updateStudentCountDisplay();
                 }
             } else {
@@ -377,7 +412,20 @@
 
         function updateStudentCountDisplay() {
             studentCount.textContent = connectedStudents.length;
-            connectedList.innerHTML = connectedStudents.map(n => `<div>• ${escapeHtml(n)}</div>`).join('');
+            
+            if (connectedStudents.length === 0) {
+                noConnectionsMsg.style.display = 'block';
+                connectedStudentsList.innerHTML = '';
+            } else {
+                noConnectionsMsg.style.display = 'none';
+                connectedStudentsList.innerHTML = connectedStudents.map(student => `
+                    <div class="student-item">
+                        <div class="student-name">${escapeHtml(student.name)}</div>
+                        <div class="student-values">F: ${student.frequency.toFixed(1)} A: ${student.amplitude.toFixed(1)} W: ${student.wavelength.toFixed(1)}</div>
+                        <div class="student-time">${student.time}</div>
+                    </div>
+                `).join('');
+            }
         }
 
         // helper: small notification
